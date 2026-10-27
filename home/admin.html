@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบฐานข้อมูล LOG & ผู้ใช้งาน (Admin Panel)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Admin Login Modal (บังคับใส่รหัสทุกครั้งที่เข้าใหม่) -->
+    <div id="adminLoginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 sm:p-8 border border-slate-100 text-center">
+            <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-inner">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h2 class="text-xl font-bold text-slate-800 mb-1">Admin Authentication</h2>
+            <p class="text-xs text-slate-500 mb-6">กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบจัดการหลังบ้าน</p>
+            
+            <form onsubmit="handleAdminLogin(event)" class="space-y-4 text-left">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">รหัสผ่านแอดมิน (Admin Password)</label>
+                    <input type="password" id="adminPasswordInput" required placeholder="กรอกรหัสผ่าน..."
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl shadow-md transition text-xs">
+                    เข้าสู่ระบบแอดมิน
+                </button>
+            </form>
+            <div class="mt-4">
+                <a href="./index.html" class="text-xs text-slate-400 hover:text-slate-600 transition"><i class="fa-solid fa-arrow-left mr-1"></i> กลับหน้าแรกผู้ใช้งาน</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar / Header -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-500/20 text-amber-400 p-2.5 rounded-2xl">
+                    <i class="fa-solid fa-database text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold">ระบบฐานข้อมูล LOG & ผู้ใช้งาน</h1>
+                    <p class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Real-time Live
+                        <span class="hidden sm:inline">• อัปเดตประวัติการใช้งานและผู้ใช้แบบเรียลไทม์ทุกๆ 3 วินาที</span>
+                    </p>
+                </div>
+            </div>
+            <button onclick="handleLogout()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold transition border border-slate-700 flex items-center gap-2">
+                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ LOG
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full space-y-6">
+        <!-- User Database Section -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-indigo-600"></i> รายชื่อผู้ใช้งานในระบบและรหัสผ่าน (User Database)
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">จัดการข้อมูลผู้ใช้งานทั้งหมดในระบบ</p>
+                </div>
+                <button onclick="openAddUserModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md shadow-indigo-100 transition flex items-center gap-2 shrink-0">
+                    <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งานใหม่
+                </button>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-100">
+                <table class="w-full text-left border-collapse min-w-[650px]">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100">
+                            <th class="py-3 px-4">ลำดับ</th>
+                            <th class="py-3 px-4">ชื่อผู้ใช้ (Username)</th>
+                            <th class="py-3 px-4">ชื่อ-นามสกุล</th>
+                            <th class="py-3 px-4">รหัสผ่าน (Password)</th>
+                            <th class="py-3 px-4">วันที่สมัคร</th>
+                            <th class="py-3 px-4 text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="userEmptyState" class="hidden py-8 text-center text-slate-400 text-xs">ไม่พบข้อมูลผู้ใช้งานในระบบ</div>
+        </div>
+
+        <!-- Activity Logs Section -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> ประวัติการทำรายการอย่างละเอียดพร้อมอุปกรณ์ (Activity Logs)
+                    </h2>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs">
+                        <span class="text-slate-500 font-medium">เลือกวันที่:</span>
+                        <input type="date" id="logDateFilter" onchange="renderLogs()" class="bg-transparent focus:outline-none text-slate-700">
+                        <button onclick="clearDateFilter()" class="text-slate-400 hover:text-slate-600 ml-1"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <button onclick="openClearLogsModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3.5 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i> ล้าง Log ทั้งหมด
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-100">
+                <table class="w-full text-left border-collapse min-w-[750px]">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100">
+                            <th class="py-3 px-4">เวลา</th>
+                            <th class="py-3 px-4">ผู้ดำเนินการ</th>
+                            <th class="py-3 px-4">ประเภทกิจกรรม (Action)</th>
+                            <th class="py-3 px-4">รายละเอียดและอุปกรณ์ (Detail)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="logEmptyState" class="hidden py-8 text-center text-slate-400 text-xs">ยังไม่มีประวัติการทำรายการ</div>
+        </div>
+    </main>
+
+    <!-- Modal เพิ่ม/แก้ไข ผู้ใช้งาน -->
+    <div id="userModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="userModalTitle" class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-indigo-600"></i> เพิ่มผู้ใช้งานใหม่
+                </h3>
+                <button onclick="closeUserModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="handleUserSubmit(event)" class="space-y-3">
+                <input type="hidden" id="modalOldUsername">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">ชื่อ-นามสกุล</label>
+                    <input type="text" id="modalFullname" required placeholder="เช่น สมชาย ใจดี" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">ชื่อผู้ใช้งาน (Username)</label>
+                    <input type="text" id="modalUsername" required placeholder="ตั้ง Username" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">รหัสผ่าน (Password)</label>
+                    <input type="text" id="modalPassword" required placeholder="ตั้ง Password" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeUserModal()" class="flex-1 px-3 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-xl">ยกเลิก</button>
+                    <button type="submit" class="flex-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันลบผู้ใช้งาน -->
+    <div id="deleteUserModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-100">
+            <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">
+                <i class="fa-solid fa-user-xmark"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">ยืนยันการลบบัญชีผู้ใช้</h3>
+            <p id="deleteUserText" class="text-xs text-slate-500 mb-5 leading-relaxed">ต้องการลบบัญชีผู้ใช้นี้และข้อมูลทั้งหมดใช่หรือไม่?</p>
+            <div class="flex gap-2">
+                <button onclick="closeDeleteUserModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition">ยกเลิก</button>
+                <button onclick="executeDeleteUser()" class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md transition">ยืนยันลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันล้าง Log ทั้งหมด -->
+    <div id="clearLogsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-100">
+            <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">ล้างประวัติ Log ทั้งหมด</h3>
+            <p class="text-xs text-slate-500 mb-5 leading-relaxed">ประวัติการใช้งานทั้งหมดจะถูกลบอย่างถาวร</p>
+            <div class="flex gap-2">
+                <button onclick="closeClearLogsModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition">ยกเลิก</button>
+                <button onclick="executeClearLogs()" class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md transition">ยืนยันล้างทั้งหมด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center space-x-2.5 text-xs">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+            <span id="toastMessage" class="font-medium">แจ้งเตือน</span>
+        </div>
+    </div>
+
+    <script>
+        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzGHqHCukj4th4_dOiqqkzB0OnpyJwxa3XBPjFhwFESblNjbgXRie0DfWs1C7UmdkkVNg/exec';
+        
+        // 🔑 ตั้งรหัสผ่านแอดมินตรงนี้ (สามารถเปลี่ยนได้ตามต้องการ)
+        const ADMIN_SECRET_PASSWORD = 'admin123'; 
+        const ADMIN_SESSION_KEY = 'ADMIN_LOGGED_IN_SESSION';
+
+        let usersList = [];
+        let logsList = [];
+        let pendingDeleteUsername = null;
+        let isEditMode = false;
+        let dataPollingInterval = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAdminSession();
+        });
+
+        function checkAdminSession() {
+            const isLoggedIn = sessionStorage.getItem(ADMIN_SESSION_KEY);
+            if (isLoggedIn === 'true') {
+                document.getElementById('adminLoginModal').classList.add('hidden');
+                startAdminApp();
+            } else {
+                document.getElementById('adminLoginModal').classList.remove('hidden');
+            }
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('adminPasswordInput').value;
+            if (pass === ADMIN_SECRET_PASSWORD) {
+                sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+                document.getElementById('adminLoginModal').classList.add('hidden');
+                document.getElementById('adminPasswordInput').value = '';
+                showToast("เข้าสู่ระบบแอดมินสำเร็จ", "success");
+                startAdminApp();
+            } else {
+                showToast("รหัสผ่านแอดมินไม่ถูกต้อง", "error");
+            }
+        }
+
+        function startAdminApp() {
+            fetchAllData();
+            if (!dataPollingInterval) {
+                dataPollingInterval = setInterval(fetchAllData, 3000); // Polling ทุก 3 วินาที
+            }
+        }
+
+        async function fetchAllData() {
+            try {
+                // Fetch Users
+                const resUsers = await fetch(GAS_API_URL);
+                const dataUsers = await resUsers.json();
+                if (dataUsers.status === 'success') {
+                    usersList = dataUsers.users || [];
+                    renderUsers();
+                }
+
+                // Fetch Logs
+                const resLogs = await fetch(`${GAS_API_URL}?action=getLogs`);
+                const dataLogs = await resLogs.json();
+                if (dataLogs.status === 'success') {
+                    logsList = dataLogs.logs || [];
+                    renderLogs();
+                }
+            } catch(err) {}
+        }
+
+        function renderUsers() {
+            const tbody = document.getElementById('userTableBody');
+            const empty = document.getElementById('userEmptyState');
+            tbody.innerHTML = '';
+
+            if (usersList.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            usersList.forEach((u, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-xs font-semibold text-slate-400">${idx + 1}</td>
+                    <td class="py-3 px-4 font-semibold text-indigo-600">${escapeHtml(u.username)}</td>
+                    <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(u.fullname)}</td>
+                    <td class="py-3 px-4 font-mono text-slate-600 bg-slate-50 px-2 rounded">${escapeHtml(u.password)}</td>
+                    <td class="py-3 px-4 text-slate-400 text-xs">${formatDate(u.createdAt)}</td>
+                    <td class="py-3 px-4 text-right">
+                        <div class="flex items-center justify-end space-x-1">
+                            <button onclick="openEditUserModal('${escapeHtml(u.username)}')" class="p-1.5 text-slate-400 hover:text-amber-500 transition" title="แก้ไข"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="promptDeleteUser('${escapeHtml(u.username)}')" class="p-1.5 text-slate-400 hover:text-rose-500 transition" title="ลบ"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderLogs() {
+            const tbody = document.getElementById('logTableBody');
+            const empty = document.getElementById('logEmptyState');
+            const dateFilter = document.getElementById('logDateFilter').value;
+            tbody.innerHTML = '';
+
+            let filtered = logsList;
+            if (dateFilter) {
+                filtered = logsList.filter(l => l.timestamp && l.timestamp.startsWith(dateFilter));
+            }
+
+            // 🚀 เรียงประวัติล่าสุดขึ้นด้านบนสุดเสมอ
+            filtered = [...filtered].reverse();
+
+            if (filtered.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            filtered.forEach(l => {
+                let badgeClass = 'bg-slate-100 text-slate-700';
+                if (l.action === 'USER_LOGIN') badgeClass = 'bg-blue-50 text-blue-700';
+                else if (l.action === 'USER_REGISTER') badgeClass = 'bg-emerald-50 text-emerald-700';
+                else if (l.action === 'ADMIN_ADD_USER') badgeClass = 'bg-indigo-50 text-indigo-700';
+                else if (l.action === 'ADMIN_DELETE_USER') badgeClass = 'bg-rose-50 text-rose-700';
+                else if (l.action === 'ADMIN_EDIT_USER') badgeClass = 'bg-amber-50 text-amber-700';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-xs text-slate-400 whitespace-nowrap">${formatDate(l.timestamp)}</td>
+                    <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(l.user)}</td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[11px] font-bold ${badgeClass}">${escapeHtml(l.action)}</span></td>
+                    <td class="py-3 px-4 text-slate-600 text-xs">${escapeHtml(l.detail)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearDateFilter() {
+            document.getElementById('logDateFilter').value = '';
+            renderLogs();
+        }
+
+        function openAddUserModal() {
+            isEditMode = false;
+            document.getElementById('userModalTitle').innerHTML = `<i class="fa-solid fa-user-plus text-indigo-600"></i> เพิ่มผู้ใช้งานใหม่`;
+            document.getElementById('modalOldUsername').value = '';
+            document.getElementById('modalFullname').value = '';
+            document.getElementById('modalUsername').value = '';
+            document.getElementById('modalPassword').value = '';
+            document.getElementById('userModal').classList.remove('hidden');
+        }
+
+        function openEditUserModal(username) {
+            const u = usersList.find(x => x.username === username);
+            if (!u) return;
+            isEditMode = true;
+            document.getElementById('userModalTitle').innerHTML = `<i class="fa-solid fa-user-pen text-amber-500"></i> แก้ไขข้อมูลผู้ใช้งาน`;
+            document.getElementById('modalOldUsername').value = u.username;
+            document.getElementById('modalFullname').value = u.fullname || '';
+            document.getElementById('modalUsername').value = u.username || '';
+            document.getElementById('modalPassword').value = u.password || '';
+            document.getElementById('userModal').classList.remove('hidden');
+        }
+
+        function closeUserModal() {
+            document.getElementById('userModal').classList.add('hidden');
+        }
+
+        async function handleUserSubmit(e) {
+            e.preventDefault();
+            const fullname = document.getElementById('modalFullname').value.trim();
+            const username = document.getElementById('modalUsername').value.trim();
+            const password = document.getElementById('modalPassword').value;
+            const oldUsername = document.getElementById('modalOldUsername').value;
+
+            const action = isEditMode ? 'editUser' : 'addUser';
+            const payload = { action, username, oldUsername, password, fullname };
+
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    showToast(isEditMode ? "แก้ไขผู้ใช้งานสำเร็จ" : "เพิ่มผู้ใช้งานสำเร็จ", "success");
+                    closeUserModal();
+                    fetchAllData();
+                } else {
+                    showToast(result.message || "เกิดข้อผิดพลาด", "error");
+                }
+            } catch(err) {
+                showToast("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "error");
+            }
+        }
+
+        function promptDeleteUser(username) {
+            pendingDeleteUsername = username;
+            document.getElementById('deleteUserText').innerHTML = `ต้องการลบบัญชีผู้ใช้ <b>"${escapeHtml(username)}"</b> และข้อมูลทั้งหมดใช่หรือไม่?`;
+            document.getElementById('deleteUserModal').classList.remove('hidden');
+        }
+
+        function closeDeleteUserModal() {
+            pendingDeleteUsername = null;
+            document.getElementById('deleteUserModal').classList.add('hidden');
+        }
+
+        async function executeDeleteUser() {
+            if (!pendingDeleteUsername) return;
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'deleteUser', username: pendingDeleteUsername })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    showToast("ลบบัญชีผู้ใช้สำเร็จ", "success");
+                    closeDeleteUserModal();
+                    fetchAllData();
+                } else {
+                    showToast(result.message || "เกิดข้อผิดพลาด", "error");
+                }
+            } catch(err) {
+                showToast("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "error");
+            }
+        }
+
+        function openClearLogsModal() {
+            document.getElementById('clearLogsModal').classList.remove('hidden');
+        }
+
+        function closeClearLogsModal() {
+            document.getElementById('clearLogsModal').classList.add('hidden');
+        }
+
+        async function executeClearLogs() {
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'clearLogs' })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    showToast("ล้าง Log ทั้งหมดเรียบร้อย", "success");
+                    closeClearLogsModal();
+                    fetchAllData();
+                }
+            } catch(err) {
+                showToast("เกิดข้อผิดพลาด", "error");
+            }
+        }
+
+        function handleLogout() {
+            sessionStorage.removeItem(ADMIN_SESSION_KEY);
+            window.location.href = './index.html';
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '-';
+            try {
+                return new Date(iso).toLocaleString('th-TH', { year: '2-digit', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            } catch(e) {
+                return iso;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            document.getElementById('toastIcon').className = type === "success" ? "fa-solid fa-circle-check text-emerald-400" : "fa-solid fa-triangle-exclamation text-rose-400";
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

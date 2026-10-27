@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4f46e5">
+    <title>ระบบจัดการข้อมูลลูกค้า และขนาดเสื้อผ้า</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font - Prompt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (XLSX) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Prompt', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f1f5f9;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        input, select, button { font-size: 16px !important; }
+        @media (min-width: 640px) { input, select, button { font-size: 0.875rem !important; } }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Auth Overlay Modal (Login / Register) -->
+    <div id="authModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 border border-slate-100">
+            
+            <!-- Login Form -->
+            <div id="loginFormContainer">
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-2 text-2xl shadow-inner">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-800">เข้าสู่ระบบ</h2>
+                    <p class="text-xs text-slate-500">กรุณาเข้าสู่ระบบเพื่อใช้งานระบบบันทึกไซส์เสื้อผ้า</p>
+                </div>
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">ชื่อผู้ใช้งาน (Username)</label>
+                        <input type="text" id="loginUsername" required placeholder="กรอก Username"
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">รหัสผ่าน (Password)</label>
+                        <input type="password" id="loginPassword" required placeholder="กรอก Password"
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl shadow-md transition">
+                        เข้าสู่ระบบ
+                    </button>
+                </form>
+                <div class="mt-4 text-center text-xs text-slate-500">
+                    <span>ยังไม่มีบัญชีผู้ใช้? <button type="button" onclick="switchAuthTab('register')" class="text-indigo-600 font-bold hover:underline">สมัครสมาชิก</button></span>
+                </div>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerFormContainer" class="hidden">
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-2 text-2xl shadow-inner">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-800">สมัครสมาชิกใหม่</h2>
+                    <p class="text-xs text-slate-500">สร้างบัญชีผู้ใช้ใหม่สำหรับเข้าใช้งาน</p>
+                </div>
+                <form onsubmit="handleRegister(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">ชื่อ-นามสกุล</label>
+                        <input type="text" id="regFullname" required placeholder="เช่น สมชาย ใจดี"
+                            class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">ชื่อผู้ใช้งาน (Username)</label>
+                        <input type="text" id="regUsername" required placeholder="ตั้ง Username"
+                            class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">รหัสผ่าน (Password)</label>
+                        <input type="password" id="regPassword" required placeholder="ตั้ง Password"
+                            class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl shadow-md transition mt-2">
+                        ยืนยันการสมัครสมาชิก
+                    </button>
+                </form>
+                <div class="mt-4 text-center text-xs text-slate-500">
+                    มีบัญชีผู้ใช้อยู่แล้ว? <button type="button" onclick="switchAuthTab('login')" class="text-indigo-600 font-bold hover:underline">เข้าสู่ระบบ</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Folder / Project Selection View -->
+    <div id="folderSelectionView" class="fixed inset-0 bg-slate-100 z-40 flex flex-col hidden overflow-y-auto">
+        <header class="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white shadow-md sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2.5 sm:space-x-3">
+                    <div class="bg-white/20 p-2 sm:p-2.5 rounded-2xl backdrop-blur-md shrink-0 shadow-inner">
+                        <i class="fa-solid fa-shirt text-xl sm:text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-xl font-bold leading-tight">ระบบบันทึกไซส์เสื้อผ้า</h1>
+                        <p class="text-[10px] sm:text-xs text-indigo-100 font-light hidden sm:block">Customer Uniform & Clothing Size Manager</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-1.5 sm:space-x-2">
+                    <button onclick="openProfileModal()" class="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl border border-white/20 backdrop-blur-sm transition" title="แก้ไขข้อมูลส่วนตัว">
+                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 text-white flex items-center justify-center font-bold text-xs sm:text-sm shrink-0">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="text-left hidden sm:block">
+                            <div id="navUserNameFolder" class="text-xs font-semibold leading-tight text-white">ผู้ใช้งาน</div>
+                            <div class="text-[10px] text-indigo-200 leading-tight">แก้ไขโปรไฟล์</div>
+                        </div>
+                    </button>
+                    
+                    <button onclick="openGuideModal()" class="bg-white/10 hover:bg-white/20 text-white p-2 sm:px-3 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition flex items-center gap-1.5 backdrop-blur-sm border border-white/20" title="คู่มือการใช้งาน">
+                        <i class="fa-solid fa-circle-question text-base text-indigo-200"></i>
+                        <span class="font-semibold hidden sm:inline">คู่มือ</span>
+                    </button>
+                    
+                    <button onclick="openLogoutModal()" class="bg-rose-500 hover:bg-rose-600 text-white p-2 sm:px-3 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shadow-md shadow-rose-900/20 border border-rose-400/30" title="ออกจากระบบ">
+                        <i class="fa-solid fa-right-from-bracket text-base"></i>
+                        <span class="font-semibold hidden sm:inline">ออกจากระบบ</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-5xl mx-auto px-4 py-6 sm:py-10 flex-grow w-full flex flex-col">
+            <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-6 sm:p-8 flex-grow flex flex-col">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2.5">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-lg border border-amber-200/60 shadow-sm">
+                                <i class="fa-solid fa-folder-open"></i>
+                            </div>
+                            เลือกหรือสร้างโฟลเดอร์งาน
+                        </h2>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-1">จัดการและจัดเก็บข้อมูลแยกตามชื่องานหรือโครงการของคุณ</p>
+                    </div>
+
+                    <form onsubmit="handleCreateFolder(event)" class="flex gap-2 shrink-0">
+                        <input type="text" id="newFolderName" required placeholder="ระบุชื่องาน / โครงการใหม่..."
+                            class="w-full sm:w-64 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-indigo-100 transition shrink-0 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> สร้างโฟลเดอร์
+                        </button>
+                    </form>
+                </div>
+
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-folder-tree text-indigo-500"></i> โฟลเดอร์งานทั้งหมด (<span id="folderCountText">0</span>)
+                    </h3>
+                    <div class="relative w-48 sm:w-64">
+                        <input type="text" id="searchFolderInput" oninput="renderFolderList()" placeholder="ค้นหาโฟลเดอร์งาน..."
+                            class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                    </div>
+                </div>
+
+                <div class="flex-grow overflow-y-auto pr-1 -mr-1">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5" id="folderListContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Header / Navbar หลัก -->
+    <header class="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2.5 sm:space-x-3">
+                <div class="bg-white/20 p-2 sm:p-2.5 rounded-2xl backdrop-blur-md shrink-0 shadow-inner">
+                    <i class="fa-solid fa-shirt text-xl sm:text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-xl font-bold leading-tight truncate max-w-[150px] sm:max-w-none" id="headerFolderTitle">ระบบบันทึกไซส์เสื้อผ้า</h1>
+                    <p class="text-[10px] sm:text-xs text-indigo-100 font-light hidden sm:block">Customer Uniform & Clothing Size Manager</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                <button onclick="backToFolderSelection()" class="bg-white/10 hover:bg-white/20 text-white p-2 sm:px-3 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition flex items-center gap-1.5 backdrop-blur-sm border border-white/20" title="เปลี่ยนโฟลเดอร์งาน">
+                    <i class="fa-solid fa-folder-tree text-amber-300"></i>
+                    <span class="hidden md:inline font-semibold">เปลี่ยนงาน</span>
+                </button>
+
+                <button onclick="openProfileModal()" class="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl border border-white/20 backdrop-blur-sm transition" title="แก้ไขข้อมูลส่วนตัว">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 text-white flex items-center justify-center font-bold text-xs sm:text-sm shrink-0">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="text-left hidden sm:block">
+                        <div id="navUserName" class="text-xs font-semibold leading-tight text-white truncate max-w-[120px]">ผู้ใช้งาน</div>
+                        <div class="text-[10px] text-indigo-200 leading-tight">แก้ไขโปรไฟล์</div>
+                    </div>
+                </button>
+
+                <button onclick="openGuideModal()" class="bg-white/10 hover:bg-white/20 text-white p-2 sm:px-3 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition flex items-center gap-1.5 backdrop-blur-sm border border-white/20" title="คู่มือการใช้งาน">
+                    <i class="fa-solid fa-circle-question text-base text-indigo-200"></i>
+                    <span class="font-semibold hidden sm:inline">คู่มือ</span>
+                </button>
+
+                <button id="btnExportExcel" onclick="openExportModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white p-2 sm:px-3 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shadow-md shadow-emerald-900/20">
+                    <i class="fa-solid fa-file-excel text-base"></i>
+                    <span class="font-semibold hidden sm:inline">ส่งออก</span>
+                </button>
+
+                <button onclick="openLogoutModal()" class="bg-rose-500 hover:bg-rose-600 text-white p-2 sm:px-3 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shadow-md shadow-rose-900/20 border border-rose-400/30" title="ออกจากระบบ">
+                    <i class="fa-solid fa-right-from-bracket text-base"></i>
+                    <span class="font-semibold hidden sm:inline">ออกจากระบบ</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex-grow w-full">
+        
+        <!-- Summary Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-3.5">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg sm:text-xl shrink-0">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium">ลูกค้าทั้งหมดในงานนี้</p>
+                    <h3 id="statTotalCustomers" class="text-xl sm:text-2xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-3.5">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg sm:text-xl shrink-0">
+                    <i class="fa-solid fa-shirt"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium">ไซส์เสื้อยอดนิยม</p>
+                    <h3 id="statPopularShirt" class="text-base sm:text-xl font-bold text-slate-800 truncate">-</h3>
+                </div>
+            </div>
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-3.5">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg sm:text-xl shrink-0">
+                    <i class="fa-solid fa-person"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium">ไซส์กางเกงยอดนิยม</p>
+                    <h3 id="statPopularPants" class="text-base sm:text-xl font-bold text-slate-800 truncate">-</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shirt Size Breakdown -->
+        <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/80 mb-4 sm:mb-6">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-indigo-500"></i> สรุปจำนวนเสื้อแยกตามไซส์ (XS - 7XL)
+            </h3>
+            <div id="sizeBreakdownContainer" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5 sm:gap-2"></div>
+        </div>
+
+        <!-- Pants Size Breakdown -->
+        <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/80 mb-4 sm:mb-6">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-2">
+                <i class="fa-solid fa-chart-bar text-purple-500"></i> สรุปจำนวนกางเกงแยกตามไซส์ (XS - 7XL)
+            </h3>
+            <div id="pantsBreakdownContainer" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5 sm:gap-2"></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+            
+            <!-- Left Side: Form Panel -->
+            <div class="lg:col-span-4">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6 lg:sticky lg:top-20">
+                    <div class="flex justify-between items-center mb-3.5 pb-2.5 border-b border-slate-100">
+                        <h2 id="formTitle" class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-user-plus text-indigo-600"></i> เพิ่มข้อมูลลูกค้าใหม่
+                        </h2>
+                        <button id="btnCancelEdit" type="button" onclick="resetForm()" class="hidden text-xs text-rose-500 hover:text-rose-700 bg-rose-50 px-2 py-1 rounded-lg transition">
+                            <i class="fa-solid fa-xmark mr-1"></i>ยกเลิก
+                        </button>
+                    </div>
+
+                    <form id="customerForm" onsubmit="handleFormSubmit(event)" class="space-y-3 sm:space-y-4">
+                        <input type="hidden" id="customerId" value="">
+
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">ชื่องาน / โครงการ (โฟลเดอร์)</label>
+                            <input type="text" id="eventName" readonly
+                                class="w-full px-3 py-2 bg-slate-100 text-slate-600 border border-slate-200 rounded-xl font-semibold cursor-not-allowed">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                                ชื่อ-นามสกุล (ภาษาไทย) <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" id="customerName" required placeholder="เช่น สมชาย ใจดี"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                                ชื่อ-นามสกุล (ภาษาอังกฤษ) <span class="text-slate-400 font-normal text-xs">(ใส่หรือไม่ก็ได้)</span>
+                            </label>
+                            <input type="text" id="customerNameEn" placeholder="เช่น Somchai Jaidee"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                                แผนก / ฝ่าย <span class="text-slate-400 font-normal text-xs">(ระบุหรือไม่ก็ได้)</span>
+                            </label>
+                            <input type="text" id="department" placeholder="เช่น ฝ่ายบุคคล, บัญชี, ตรวจการ"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                                ประเภทชุด / ชื่อชุด <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" id="outfitType" required placeholder="เช่น เสื้อโปโล, ชุดกีฬา, ยูนิฟอร์ม"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                        </div>
+
+                        <!-- Shirt Section -->
+                        <div class="p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl space-y-2.5">
+                            <label class="block text-xs font-bold text-indigo-700 uppercase tracking-wide flex justify-between items-center">
+                                <span><i class="fa-solid fa-shirt mr-1"></i> ข้อมูลเสื้อ</span>
+                            </label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="col-span-2">
+                                    <label class="block text-[11px] font-medium text-slate-600 mb-1">ไซส์เสื้อ</label>
+                                    <select id="shirtSize"
+                                        class="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                                        <option value="">-- ไม่รับเสื้อ --</option>
+                                        <option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="2XL">2XL</option><option value="3XL">3XL</option><option value="4XL">4XL</option><option value="5XL">5XL</option><option value="6XL">6XL</option><option value="7XL">7XL</option><option value="สั่งตัดพิเศษ">สั่งตัดพิเศษ</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-medium text-slate-600 mb-1">จำนวน</label>
+                                    <input type="number" id="shirtQty" min="1" value="1" placeholder="1"
+                                        class="w-full px-2 py-2 bg-white border border-slate-200 rounded-xl text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                            </div>
+                            <input type="text" id="shirtNotes" placeholder="หมายเหตุเสื้อ"
+                                class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        </div>
+
+                        <!-- Pants Section -->
+                        <div class="p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl space-y-2.5">
+                            <label class="block text-xs font-bold text-purple-700 uppercase tracking-wide flex justify-between items-center">
+                                <span><i class="fa-solid fa-ruler-horizontal mr-1"></i> ข้อมูลกางเกง</span>
+                            </label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="col-span-2">
+                                    <label class="block text-[11px] font-medium text-slate-600 mb-1">ไซส์กางเกง</label>
+                                    <select id="pantsSize"
+                                        class="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                                        <option value="">-- ไม่รับกางเกง --</option>
+                                        <option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="2XL">2XL</option><option value="3XL">3XL</option><option value="4XL">4XL</option><option value="5XL">5XL</option><option value="6XL">6XL</option><option value="7XL">7XL</option><option value="สั่งตัดพิเศษ">สั่งตัดพิเศษ</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-medium text-slate-600 mb-1">จำนวน</label>
+                                    <input type="number" id="pantsQty" min="1" value="1" placeholder="1"
+                                        class="w-full px-2 py-2 bg-white border border-slate-200 rounded-xl text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                            </div>
+                            <input type="text" id="pantsNotes" placeholder="หมายเหตุกางเกง"
+                                class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        </div>
+
+                        <div class="pt-1">
+                            <button type="submit" id="btnSubmit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Side: Data List & Filters -->
+            <div class="lg:col-span-8">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6">
+                    
+                    <div class="flex flex-col gap-2.5 mb-4">
+                        <div class="relative w-full">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </div>
+                            <input type="text" id="searchInput" oninput="renderData()" placeholder="ค้นหาจากชื่อ (ไทย/อังกฤษ), แผนก, ประเภทชุด..."
+                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-center">
+                            <select id="filterShirt" onchange="renderData()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-2.5 py-2 w-full sm:w-auto">
+                                <option value="">เสื้อ: ทุกไซส์</option>
+                                <option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="2XL">2XL</option><option value="3XL">3XL</option><option value="4XL">4XL</option><option value="5XL">5XL</option><option value="6XL">6XL</option><option value="7XL">7XL</option><option value="สั่งตัดพิเศษ">สั่งตัดพิเศษ</option>
+                            </select>
+
+                            <select id="filterPants" onchange="renderData()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-2.5 py-2 w-full sm:w-auto">
+                                <option value="">กางเกง: ทุกไซส์</option>
+                                <option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="2XL">2XL</option><option value="3XL">3XL</option><option value="4XL">4XL</option><option value="5XL">5XL</option><option value="6XL">6XL</option><option value="7XL">7XL</option><option value="สั่งตัดพิเศษ">สั่งตัดพิเศษ</option>
+                            </select>
+
+                            <button onclick="loadDemoData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 font-medium shrink-0">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i> สุ่มตัวอย่าง
+                            </button>
+
+                            <button onclick="openClearAllModal()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 font-medium shrink-0">
+                                <i class="fa-solid fa-trash-can"></i> ล้างทั้งหมดในงานนี้
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto table-responsive rounded-xl border border-slate-100 mb-3">
+                        <table class="w-full text-left border-collapse min-w-[650px]">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100">
+                                    <th class="py-3 px-3">ลำดับ</th>
+                                    <th class="py-3 px-3">ชื่อ-นามสกุล / แผนก</th>
+                                    <th class="py-3 px-3">ประเภทชุด</th>
+                                    <th class="py-3 px-3 text-center">เสื้อ (ไซส์ / จำนวน)</th>
+                                    <th class="py-3 px-3 text-center">กางเกง (ไซส์ / จำนวน)</th>
+                                    <th class="py-3 px-3 text-center">วันที่บันทึก</th>
+                                    <th class="py-3 px-3 text-right">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customerTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="emptyState" class="hidden py-10 text-center">
+                        <div class="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400 mb-2.5 text-xl">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                        <h4 class="text-slate-600 font-medium text-sm">ยังไม่มีข้อมูลลูกค้าในโฟลเดอร์นี้</h4>
+                        <p class="text-slate-400 text-xs mt-1">สามารถเพิ่มข้อมูลผ่านฟอร์ม หรือกดปุ่ม "สุ่มตัวอย่าง"</p>
+                    </div>
+
+                    <div class="flex justify-between items-center text-xs text-slate-400 pt-1">
+                        <span id="dataCountText">แสดง 0 จาก 0 รายการ</span>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Modal แก้ไขข้อมูลส่วนตัว (Profile Modal) -->
+    <div id="profileModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-indigo-600"></i> แก้ไขข้อมูลส่วนตัว
+                </h3>
+                <button onclick="closeProfileModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="handleUpdateProfile(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">ชื่อ-นามสกุล</label>
+                    <input type="text" id="profileFullname" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">ชื่อผู้ใช้งาน (Username)</label>
+                    <input type="text" id="profileUsername" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">รหัสผ่านใหม่ (Password)</label>
+                    <input type="password" id="profilePassword" required placeholder="กรอกรหัสผ่านใหม่หรือรหัสผ่านเดิม" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeProfileModal()" class="flex-1 px-3 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-xl">ยกเลิก</button>
+                    <button type="submit" class="flex-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันการออกจากระบบ -->
+    <div id="logoutModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-100">
+            <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">ยืนยันการออกจากระบบ</h3>
+            <p class="text-xs text-slate-500 mb-5 leading-relaxed">คุณต้องการออกจากระบบใช่หรือไม่?</p>
+            <div class="flex gap-2">
+                <button onclick="closeLogoutModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition">ยกเลิก</button>
+                <button onclick="executeLogout()" class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md transition">ยืนยันออก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันข้อมูลซ้ำ -->
+    <div id="duplicateConfirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 text-center">
+            <div class="w-12 h-12 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">พบข้อมูลซ้ำในระบบ</h3>
+            <p id="duplicateConfirmText" class="text-xs text-slate-500 mb-4"></p>
+            <div class="flex gap-2">
+                <button onclick="closeDuplicateModal()" class="flex-1 px-3 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-xl">ยกเลิก</button>
+                <button onclick="confirmSaveDuplicate()" class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl shadow">บันทึกซ้ำ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal คู่มือการใช้งาน -->
+    <div id="guideModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-5">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100 shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-base">
+                        <i class="fa-solid fa-book-open"></i>
+                    </div>
+                    คู่มือการใช้งานระบบ
+                </h3>
+                <button onclick="closeGuideModal()" class="text-slate-400 hover:text-slate-600 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="overflow-y-auto pr-2 space-y-4 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <div class="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-2xl">
+                    <h4 class="font-bold text-indigo-900 text-sm mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-folder-open text-indigo-600"></i> 1. การจัดการโฟลเดอร์งาน (Project Folder)
+                    </h4>
+                    <p class="text-xs text-indigo-800/80">ระบบแยกข้อมูลตามชื่องาน คุณสามารถพิมพ์ชื่อโปรเจกต์ใหม่ในช่องสร้างโฟลเดอร์เพื่อเริ่มต้น หรือกดเปิดงานจากโฟลเดอร์ที่มีอยู่แล้วเพื่อจัดการข้อมูลลูกค้าภายในงานนั้นๆ</p>
+                </div>
+
+                <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                    <h4 class="font-bold text-slate-800 text-sm mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-plus text-indigo-600"></i> 2. การเพิ่มและแก้ไขข้อมูลลูกค้า
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-xs text-slate-600">
+                        <li>กรอกชื่อ-นามสกุล (ไทย) และประเภทชุดให้ครบถ้วน สามารถใส่ชื่อภาษาอังกฤษเพิ่มได้ (ไม่บังคับ)</li>
+                        <li>เลือกไซส์เสื้อหรือกางเกง (มีตั้งแต่ XS ถึง 7XL และสั่งตัดพิเศษ) พร้อมระบุจำนวน</li>
+                        <li>หากพบชื่อซ้ำในงานเดียวกัน ระบบจะมีหน้าต่างเตือนให้ยืนยันการบันทึกซ้ำ</li>
+                        <li>สามารถกดไอคอนแก้ไข หรือลบ ที่ตารางรายการด้านขวาได้ตลอดเวลา</li>
+                    </ul>
+                </div>
+
+                <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                    <h4 class="font-bold text-slate-800 text-sm mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-pie text-indigo-600"></i> 3. การดูสถิติและสรุปยอดไซส์
+                    </h4>
+                    <p class="text-xs text-slate-600">ระบบจะทำการคำนวณสรุปจำนวนรวมของเสื้อและกางเกงแต่ละไซส์แบบเรียลไทม์ พร้อมแสดงผลไซส์ยอดนิยมสูงสุดให้คุณเห็นภาพรวมทันที</p>
+                </div>
+
+                <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                    <h4 class="font-bold text-slate-800 text-sm mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-excel text-emerald-600"></i> 4. การส่งออกรายงาน (Excel)
+                    </h4>
+                    <p class="text-xs text-slate-600">กดปุ่มสีเขียว "ส่งออก" ด้านบนขวาเพื่อดาวน์โหลดไฟล์ Excel รายงานสรุปไซส์และรายชื่อลูกค้าไปใช้งานได้ทันที</p>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex justify-end shrink-0 mt-4">
+                <button onclick="closeGuideModal()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow transition">เข้าใจแล้ว</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 border border-slate-100">
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2 text-emerald-600 font-bold"><i class="fa-solid fa-file-excel text-lg"></i><span>ส่งออกไฟล์ Excel</span></div>
+                <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="confirmExportExcel(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อไฟล์เอกสาร</label>
+                    <input type="text" id="exportFileName" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="flex gap-2 justify-end pt-2">
+                    <button type="button" onclick="closeExportModal()" class="px-3.5 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-xl">ยกเลิก</button>
+                    <button type="submit" class="px-3.5 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-xl shadow">ดาวน์โหลด</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันการลบข้อมูล (Delete Single Modal) -->
+    <div id="deleteSingleModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-100">
+            <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">
+                <i class="fa-solid fa-user-xmark"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">ยืนยันการลบข้อมูล</h3>
+            <p id="deleteSingleText" class="text-xs text-slate-500 mb-5 leading-relaxed">ต้องการลบข้อมูลลูกค้ารายนี้ใช่หรือไม่?</p>
+            <div class="flex gap-2">
+                <button onclick="closeDeleteSingleModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition">ยกเลิก</button>
+                <button onclick="executeDeleteSingle()" class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md transition">ยืนยันลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันลบโฟลเดอร์งาน -->
+    <div id="deleteFolderModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-100">
+            <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">
+                <i class="fa-solid fa-folder-minus"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">ยืนยันการลบโฟลเดอร์</h3>
+            <p id="deleteFolderText" class="text-xs text-slate-500 mb-5 leading-relaxed">คุณต้องการลบโฟลเดอร์งานนี้และข้อมูลทั้งหมดข้างในใช่หรือไม่?</p>
+            <div class="flex gap-2">
+                <button onclick="closeDeleteFolderModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition">ยกเลิก</button>
+                <button onclick="executeDeleteFolder()" class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md transition">ยืนยันลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันล้างข้อมูลทั้งหมดในงาน -->
+    <div id="clearAllModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-100">
+            <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">ล้างข้อมูลทั้งหมดในงานนี้</h3>
+            <p class="text-xs text-slate-500 mb-5 leading-relaxed">ข้อมูลลูกค้าทั้งหมดในโฟลเดอร์นี้จะถูกลบอย่างถาวร</p>
+            <div class="flex gap-2">
+                <button onclick="closeClearAllModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition">ยกเลิก</button>
+                <button onclick="executeClearAllData()" class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md transition">ยืนยันลบทั้งหมด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center space-x-2.5 text-xs">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+            <span id="toastMessage" class="font-medium">แจ้งเตือน</span>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic (Optimized for Speed) -->
+    <script>
+        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzGHqHCukj4th4_dOiqqkzB0OnpyJwxa3XBPjFhwFESblNjbgXRie0DfWs1C7UmdkkVNg/exec';
+        const STORAGE_KEY = 'CUSTOMER_SIZE_DATA_BY_USER_V1';
+        const SESSION_KEY = 'APP_CURRENT_SESSION_V1';
+        const FOLDER_SESSION_KEY = 'APP_CURRENT_FOLDER_V1';
+
+        let customers = [];
+        let currentUser = null;
+        let currentFolder = null;
+        let pendingDeleteId = null;
+        let pendingDeleteFolder = null;
+        let pendingSaveData = null;
+        const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', 'สั่งตัดพิเศษ'];
+
+        // ฟังก์ชันตรวจจับแพลตฟอร์ม/อุปกรณ์อัตโนมัติ
+        function getDevicePlatform() {
+            const ua = navigator.userAgent;
+            if (/Macintosh/i.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) return "iPad (Tablet)";
+            if (/iPhone|iPod/i.test(ua)) return "iOS (iPhone)";
+            if (/iPad/i.test(ua)) return "iPad (Tablet)";
+            if (/Android/i.test(ua)) return /Mobile/i.test(ua) ? "Android (Mobile)" : "Android (Tablet)";
+            if (/Macintosh|MacIntel/i.test(ua)) return "MacBook / Mac";
+            if (/Windows|Win32|Win64/i.test(ua)) return "Windows (PC / Notebook)";
+            if (/Linux/i.test(ua)) return "Linux (PC)";
+            return "คอมพิวเตอร์ / อุปกรณ์อื่นๆ";
+        }
+
+        window.addEventListener('DOMContentLoaded', () => { 
+            checkAuthSession();
+        });
+
+        async function logActivity(action, detail) {
+            try {
+                fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        action: 'logActivity', 
+                        user: currentUser ? `${currentUser.fullname} (${currentUser.username})` : 'Anonymous', 
+                        action, 
+                        detail,
+                        platform: getDevicePlatform()
+                    })
+                }).catch(e => {});
+            } catch(e) {}
+        }
+
+        function checkAuthSession() {
+            const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+            if (session) {
+                currentUser = session;
+                document.getElementById('authModal').classList.add('hidden');
+                updateUserNameDisplays();
+
+                // โหลดข้อมูลแบบทันทีจาก Local Storage เพื่อความไวสูงสุด
+                loadFromLocalStorage();
+
+                const activeFolder = sessionStorage.getItem(FOLDER_SESSION_KEY);
+                if (activeFolder) {
+                    currentFolder = activeFolder;
+                    document.getElementById('folderSelectionView').classList.add('hidden');
+                    document.getElementById('headerFolderTitle').innerText = `งาน: ${currentFolder}`;
+                    document.getElementById('eventName').value = currentFolder;
+                    renderData();
+                } else {
+                    showFolderSelection();
+                }
+            } else {
+                document.getElementById('authModal').classList.remove('hidden');
+            }
+        }
+
+        function updateUserNameDisplays() {
+            const nameDisplay = document.getElementById('navUserName');
+            const nameDisplayFolder = document.getElementById('navUserNameFolder');
+            if (nameDisplay && currentUser) nameDisplay.innerText = currentUser.fullname || currentUser.username;
+            if (nameDisplayFolder && currentUser) nameDisplayFolder.innerText = currentUser.fullname || currentUser.username;
+        }
+
+        function showFolderSelection() {
+            loadFromLocalStorage();
+            document.getElementById('folderSelectionView').classList.remove('hidden');
+            renderFolderList();
+        }
+
+        function renderFolderList() {
+            const container = document.getElementById('folderListContainer');
+            const searchKeyword = (document.getElementById('searchFolderInput')?.value || '').toLowerCase().trim();
+            let folders = [...new Set(customers.map(c => c.eventName))].filter(Boolean);
+
+            if (searchKeyword) {
+                folders = folders.filter(f => f.toLowerCase().includes(searchKeyword));
+            }
+
+            document.getElementById('folderCountText').innerText = folders.length;
+
+            if (folders.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-400 text-xs sm:text-sm bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-2">
+                        <i class="fa-solid fa-folder-open text-3xl text-slate-300"></i>
+                        <span>${searchKeyword ? 'ไม่พบโฟลเดอร์งานที่ตรงกับคำค้นหา' : 'ยังไม่มีโฟลเดอร์งานในระบบ<br>พิมพ์ชื่อด้านบนเพื่อสร้างโฟลเดอร์แรกของคุณ'}</span>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = folders.map(folder => {
+                const count = customers.filter(c => c.eventName === folder).length;
+                return `
+                    <div class="flex flex-col justify-between p-4 bg-white hover:bg-slate-50/80 border border-slate-200/80 rounded-2xl transition-all duration-200 group shadow-sm hover:shadow-md hover:border-indigo-200 relative">
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <div class="flex items-center gap-3 cursor-pointer flex-grow" onclick="selectFolder('${escapeHtml(folder)}')">
+                                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center text-lg shrink-0 border border-amber-200/50 shadow-inner group-hover:scale-105 transition-transform">
+                                    <i class="fa-solid fa-folder"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600 transition-colors">${escapeHtml(folder)}</h4>
+                                    <p class="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5"><i class="fa-solid fa-users text-[10px]"></i> ${count} รายการ</p>
+                                </div>
+                            </div>
+                            <button onclick="promptDeleteFolder('${escapeHtml(folder)}')" class="text-slate-300 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition" title="ลบโฟลเดอร์นี้">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                        <button onclick="selectFolder('${escapeHtml(folder)}')" class="w-full py-2 bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                            เปิดโฟลเดอร์งาน <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleCreateFolder(e) {
+            e.preventDefault();
+            const folderName = document.getElementById('newFolderName').value.trim();
+            if (!folderName) return;
+            selectFolder(folderName);
+        }
+
+        function selectFolder(folderName) {
+            currentFolder = folderName;
+            sessionStorage.setItem(FOLDER_SESSION_KEY, folderName);
+            document.getElementById('folderSelectionView').classList.add('hidden');
+            document.getElementById('headerFolderTitle').innerText = `งาน: ${currentFolder}`;
+            document.getElementById('eventName').value = currentFolder;
+            document.getElementById('newFolderName').value = '';
+            renderData();
+            showToast(`เข้าสู่โฟลเดอร์งาน "${folderName}"`, "success");
+        }
+
+        function backToFolderSelection() {
+            sessionStorage.removeItem(FOLDER_SESSION_KEY);
+            currentFolder = null;
+            showFolderSelection();
+        }
+
+        function promptDeleteFolder(folderName) {
+            pendingDeleteFolder = folderName;
+            document.getElementById('deleteFolderText').innerHTML = `คุณต้องการลบโฟลเดอร์ <b>"${escapeHtml(folderName)}"</b> และข้อมูลทั้งหมดข้างในใช่หรือไม่?`;
+            document.getElementById('deleteFolderModal').classList.remove('hidden');
+        }
+
+        function closeDeleteFolderModal() {
+            pendingDeleteFolder = null;
+            document.getElementById('deleteFolderModal').classList.add('hidden');
+        }
+
+        async function executeDeleteFolder() {
+            if (!pendingDeleteFolder) return;
+            customers = customers.filter(c => c.eventName !== pendingDeleteFolder);
+            saveToLocalStorage();
+            renderFolderList();
+            showToast(`ลบโฟลเดอร์ "${pendingDeleteFolder}" เรียบร้อยแล้ว`, "success");
+            closeDeleteFolderModal();
+        }
+
+        function switchAuthTab(tab) {
+            document.getElementById('loginFormContainer').classList.add('hidden');
+            document.getElementById('registerFormContainer').classList.add('hidden');
+            if (tab === 'register') {
+                document.getElementById('registerFormContainer').classList.remove('hidden');
+            } else {
+                document.getElementById('loginFormContainer').classList.remove('hidden');
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const fullname = document.getElementById('regFullname').value.trim();
+            const username = document.getElementById('regUsername').value.trim();
+            const password = document.getElementById('regPassword').value;
+
+            showToast("กำลังบันทึกข้อมูล...", "success");
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'register', username, password, fullname, platform: getDevicePlatform() })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    showToast("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ", "success");
+                    switchAuthTab('login');
+                } else {
+                    showToast(result.message || "เกิดข้อผิดพลาด", "error");
+                }
+            } catch(err) {
+                showToast("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "error");
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            showToast("กำลังตรวจสอบ...", "success");
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'login', username, password, platform: getDevicePlatform() })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    currentUser = result.user;
+                    sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+                    sessionStorage.removeItem(FOLDER_SESSION_KEY);
+                    currentFolder = null;
+
+                    document.getElementById('authModal').classList.add('hidden');
+                    showToast(`ยินดีต้อนรับคุณ ${currentUser.fullname}`, "success");
+                    
+                    updateUserNameDisplays();
+                    loadFromLocalStorage();
+                    showFolderSelection();
+                } else {
+                    showToast(result.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "error");
+                }
+            } catch(err) {
+                showToast("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "error");
+            }
+        }
+
+        function openProfileModal() {
+            if (!currentUser) return;
+            document.getElementById('profileFullname').value = currentUser.fullname || '';
+            document.getElementById('profileUsername').value = currentUser.username || '';
+            document.getElementById('profilePassword').value = currentUser.password || '';
+            document.getElementById('profileModal').classList.remove('hidden');
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.add('hidden');
+        }
+
+        async function handleUpdateProfile(e) {
+            e.preventDefault();
+            const newFullname = document.getElementById('profileFullname').value.trim();
+            const newUsername = document.getElementById('profileUsername').value.trim();
+            const newPassword = document.getElementById('profilePassword').value;
+
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'updateProfile', oldUsername: currentUser.username, username: newUsername, password: newPassword, fullname: newFullname, platform: getDevicePlatform() })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    currentUser = { ...currentUser, username: newUsername, fullname: newFullname, password: newPassword };
+                    sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+                    updateUserNameDisplays();
+                    closeProfileModal();
+                    showToast("อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว", "success");
+                } else {
+                    showToast(result.message, "error");
+                }
+            } catch(err) {
+                showToast("เกิดข้อผิดพลาด", "error");
+            }
+        }
+
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+        }
+
+        function executeLogout() {
+            logActivity("USER_LOGOUT", `ออกจากระบบ`);
+            sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(FOLDER_SESSION_KEY);
+            currentUser = null;
+            currentFolder = null;
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.getElementById('folderSelectionView').classList.add('hidden');
+            document.getElementById('authModal').classList.remove('hidden');
+        }
+
+        function getUserStorageKey() {
+            return currentUser ? `${STORAGE_KEY}_${currentUser.username}` : STORAGE_KEY;
+        }
+
+        // โหลดข้อมูลแบบ Instant จากเครื่อง และ Sync กับ Google Sheets แบบเบื้องหลัง (Background)
+        function loadFromLocalStorage() {
+            if (!currentUser) return;
+            try {
+                const raw = localStorage.getItem(getUserStorageKey());
+                customers = raw ? JSON.parse(raw) : [];
+
+                if (currentFolder) renderData();
+                else if (!document.getElementById('folderSelectionView').classList.contains('hidden')) renderFolderList();
+
+                // ดึงข้อมูลล่าสุดจาก Google Sheets แบบ Background เงียบๆ ไม่บล็อกหน้าจอ
+                fetch(`${GAS_API_URL}?action=getCustomers&username=${encodeURIComponent(currentUser.username)}`)
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.status === 'success' && result.customers) {
+                            customers = result.customers;
+                            localStorage.setItem(getUserStorageKey(), JSON.stringify(customers));
+                            if (currentFolder) renderData();
+                            else if (!document.getElementById('folderSelectionView').classList.contains('hidden')) renderFolderList();
+                        }
+                    }).catch(e => {});
+            } catch(e) {
+                const raw = localStorage.getItem(getUserStorageKey());
+                customers = raw ? JSON.parse(raw) : [];
+            }
+        }
+
+        // บันทึกข้อมูลแบบ Instant และส่งข้อมูลขึ้น Google Sheets แบบเบื้องหลังทันที
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(getUserStorageKey(), JSON.stringify(customers));
+                if (currentFolder) {
+                    updateStats(customers.filter(item => item.eventName === currentFolder));
+                }
+
+                if (currentUser) {
+                    fetch(GAS_API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            action: 'saveCustomers',
+                            username: currentUser.username,
+                            customers: customers,
+                            platform: getDevicePlatform()
+                        })
+                    }).catch(e => {});
+                }
+            } catch(e) {
+                showToast("บันทึกไม่สำเร็จ", "error");
+            }
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const id = document.getElementById('customerId').value;
+            const eventName = currentFolder;
+            const name = document.getElementById('customerName').value.trim();
+            const nameEn = document.getElementById('customerNameEn').value.trim();
+            const department = document.getElementById('department').value.trim();
+            const outfit = document.getElementById('outfitType').value.trim();
+            const shirt = document.getElementById('shirtSize').value;
+            const shirtQty = shirt ? (parseInt(document.getElementById('shirtQty').value) || 1) : 0;
+            const shirtNotes = document.getElementById('shirtNotes').value.trim();
+            const pants = document.getElementById('pantsSize').value;
+            const pantsQty = pants ? (parseInt(document.getElementById('pantsQty').value) || 1) : 0;
+            const pantsNotes = document.getElementById('pantsNotes').value.trim();
+
+            if (!name || !outfit) {
+                showToast("กรุณากรอกข้อมูล ชื่อ และประเภทชุด", "error");
+                return;
+            }
+
+            if (!shirt && !pants) {
+                showToast("กรุณาเลือกไซส์เสื้อ หรือไซส์กางเกง อย่างน้อย 1 รายการ", "error");
+                return;
+            }
+
+            const timestamp = new Date().toISOString();
+            const payload = { id, eventName, name, nameEn, department, outfit, shirt, shirtQty, shirtNotes, pants, pantsQty, pantsNotes, timestamp };
+
+            const isDuplicate = customers.some(item => 
+                item.id !== id && 
+                item.eventName === eventName && 
+                item.name.toLowerCase() === name.toLowerCase()
+            );
+
+            if (isDuplicate) {
+                pendingSaveData = payload;
+                document.getElementById('duplicateConfirmText').innerHTML = `พบคุณ <b>"${escapeHtml(name)}"</b> ในงาน <b>"${escapeHtml(eventName)}"</b> อยู่แล้ว คุณต้องการบันทึกซ้ำหรือไม่?`;
+                document.getElementById('duplicateConfirmModal').classList.remove('hidden');
+                return;
+            }
+
+            saveCustomerData(payload);
+        }
+
+        function saveCustomerData(data) {
+            const { id, eventName, name, nameEn, department, outfit, shirt, shirtQty, shirtNotes, pants, pantsQty, pantsNotes, timestamp } = data;
+
+            if (id) {
+                const idx = customers.findIndex(item => item.id === id);
+                if (idx !== -1) customers[idx] = { ...customers[idx], eventName, name, nameEn, department, outfit, shirt, shirtQty, shirtNotes, pants, pantsQty, pantsNotes, updatedAt: timestamp };
+                logActivity("UPDATE_CUSTOMER", `แก้ไขข้อมูลลูกค้า: ${name} (งาน: ${eventName})`);
+                showToast("อัปเดตข้อมูลสำเร็จ", "success");
+            } else {
+                customers.unshift({ id: 'CUST-' + Date.now(), eventName, name, nameEn, department, outfit, shirt, shirtQty, shirtNotes, pants, pantsQty, pantsNotes, createdAt: timestamp, updatedAt: timestamp });
+                logActivity("CREATE_CUSTOMER", `เพิ่มลูกค้าใหม่: ${name} (งาน: ${eventName})`);
+                showToast("บันทึกข้อมูลสำเร็จ", "success");
+            }
+
+            saveToLocalStorage();
+            resetForm();
+            renderData();
+        }
+
+        function confirmSaveDuplicate() {
+            if (pendingSaveData) {
+                saveCustomerData(pendingSaveData);
+                pendingSaveData = null;
+            }
+            closeDuplicateModal();
+        }
+
+        function closeDuplicateModal() {
+            pendingSaveData = null;
+            document.getElementById('duplicateConfirmModal').classList.add('hidden');
+        }
+
+        function editCustomer(id) {
+            const c = customers.find(item => item.id === id);
+            if (!c) return;
+            document.getElementById('customerId').value = c.id;
+            document.getElementById('customerName').value = c.name;
+            document.getElementById('customerNameEn').value = c.nameEn || '';
+            document.getElementById('department').value = c.department || '';
+            document.getElementById('outfitType').value = c.outfit || '';
+            document.getElementById('shirtSize').value = c.shirt || '';
+            document.getElementById('shirtQty').value = c.shirtQty || 1;
+            document.getElementById('shirtNotes').value = c.shirtNotes || '';
+            document.getElementById('pantsSize').value = c.pants || '';
+            document.getElementById('pantsQty').value = c.pantsQty || 1;
+            document.getElementById('pantsNotes').value = c.pantsNotes || '';
+
+            document.getElementById('formTitle').innerHTML = `<i class="fa-solid fa-user-pen text-amber-500"></i> แก้ไขข้อมูล`;
+            const btn = document.getElementById('btnSubmit');
+            btn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> อัปเดตข้อมูล`;
+            btn.className = "w-full bg-amber-500 hover:bg-amber-600 text-white font-medium py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2";
+            document.getElementById('btnCancelEdit').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteCustomer(id) {
+            const c = customers.find(item => item.id === id);
+            if (!c) return;
+            pendingDeleteId = id;
+            document.getElementById('deleteSingleText').innerHTML = `ต้องการลบข้อมูลของ <b>"${escapeHtml(c.name)}"</b> ใช่หรือไม่?`;
+            document.getElementById('deleteSingleModal').classList.remove('hidden');
+        }
+
+        function closeDeleteSingleModal() { 
+            pendingDeleteId = null; 
+            document.getElementById('deleteSingleModal').classList.add('hidden'); 
+        }
+
+        function executeDeleteSingle() {
+            if (!pendingDeleteId) return;
+            const c = customers.find(item => item.id === pendingDeleteId);
+            if (c) logActivity("DELETE_CUSTOMER", `ลบข้อมูลลูกค้า: ${c.name} (งาน: ${c.eventName})`);
+
+            customers = customers.filter(item => item.id !== pendingDeleteId);
+            saveToLocalStorage();
+            renderData();
+            if (document.getElementById('customerId').value === pendingDeleteId) resetForm();
+            closeDeleteSingleModal();
+            showToast("ลบข้อมูลสำเร็จ", "success");
+        }
+
+        function resetForm() {
+            document.getElementById('customerForm').reset();
+            document.getElementById('customerId').value = '';
+            document.getElementById('eventName').value = currentFolder || '';
+            document.getElementById('shirtQty').value = '1';
+            document.getElementById('pantsQty').value = '1';
+            document.getElementById('formTitle').innerHTML = `<i class="fa-solid fa-user-plus text-indigo-600"></i> เพิ่มข้อมูลลูกค้าใหม่`;
+            const btn = document.getElementById('btnSubmit');
+            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล`;
+            btn.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2";
+            document.getElementById('btnCancelEdit').classList.add('hidden');
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '-';
+            return new Date(iso).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderData() {
+            if (!currentFolder) return;
+            const folderCustomers = customers.filter(item => item.eventName === currentFolder);
+
+            const q = document.getElementById('searchInput').value.toLowerCase().trim();
+            const sFilter = document.getElementById('filterShirt').value;
+            const pFilter = document.getElementById('filterPants').value;
+
+            const filtered = folderCustomers.filter(item => {
+                const matchQ = item.name.toLowerCase().includes(q) || 
+                               (item.nameEn && item.nameEn.toLowerCase().includes(q)) || 
+                               (item.department && item.department.toLowerCase().includes(q)) || 
+                               (item.outfit && item.outfit.toLowerCase().includes(q));
+                const matchS = sFilter === '' || item.shirt === sFilter;
+                const matchP = pFilter === '' || item.pants === pFilter;
+                return matchQ && matchS && matchP;
+            });
+
+            const tbody = document.getElementById('customerTableBody');
+            tbody.innerHTML = '';
+            const empty = document.getElementById('emptyState');
+
+            if (filtered.length === 0) {
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+                filtered.forEach((item, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition';
+                    tr.innerHTML = `
+                        <td class="py-3 px-3 text-xs font-semibold text-slate-400">${idx + 1}</td>
+                        <td class="py-3 px-3">
+                            <div class="font-medium text-slate-800 text-xs sm:text-sm">${escapeHtml(item.name)}</div>
+                            ${item.nameEn ? `<div class="text-[11px] text-indigo-500 font-medium">${escapeHtml(item.nameEn)}</div>` : ''}
+                            ${item.department ? `<div class="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5"><i class="fa-solid fa-sitemap text-[10px]"></i> ${escapeHtml(item.department)}</div>` : ''}
+                        </td>
+                        <td class="py-3 px-3"><div class="font-semibold text-indigo-600 text-xs">${escapeHtml(item.outfit || '-')}</div></td>
+                        <td class="py-3 px-3 text-center">
+                            ${item.shirt ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700">${escapeHtml(item.shirt)}</span> <span class="text-xs font-semibold text-slate-700">${item.shirtQty || 1} ตัว</span>` : '<span class="text-slate-300">-</span>'}
+                        </td>
+                        <td class="py-3 px-3 text-center">
+                            ${item.pants ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-purple-50 text-purple-700">${escapeHtml(item.pants)}</span> <span class="text-xs font-semibold text-slate-700">${item.pantsQty || 1} ตัว</span>` : '<span class="text-slate-300">-</span>'}
+                        </td>
+                        <td class="py-3 px-3 text-center text-[11px] text-slate-400">${formatDate(item.updatedAt || item.createdAt)}</td>
+                        <td class="py-3 px-3 text-right">
+                            <div class="flex items-center justify-end space-x-1">
+                                <button onclick="editCustomer('${item.id}')" class="p-1.5 text-slate-400 hover:text-amber-500" title="แก้ไข"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="deleteCustomer('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-500" title="ลบ"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            document.getElementById('dataCountText').innerText = `แสดง ${filtered.length} จาก ${folderCustomers.length} รายการ`;
+            updateStats(folderCustomers);
+        }
+
+        function updateStats(folderCustomers) {
+            document.getElementById('statTotalCustomers').innerText = folderCustomers.length;
+            const sCont = document.getElementById('sizeBreakdownContainer');
+            const pCont = document.getElementById('pantsBreakdownContainer');
+            sCont.innerHTML = ''; pCont.innerHTML = '';
+
+            let sCounts = {}, pCounts = {};
+            ALL_SIZES.forEach(sz => { sCounts[sz] = 0; pCounts[sz] = 0; });
+
+            if (folderCustomers.length === 0) {
+                document.getElementById('statPopularShirt').innerText = '-';
+                document.getElementById('statPopularPants').innerText = '-';
+                ALL_SIZES.forEach(sz => {
+                    sCont.innerHTML += `<div class="bg-slate-50 p-1.5 rounded-xl text-center border"><span class="text-[10px] font-bold text-slate-500 block">${sz}</span><span class="text-xs font-semibold text-slate-400">0</span></div>`;
+                    pCont.innerHTML += `<div class="bg-slate-50 p-1.5 rounded-xl text-center border"><span class="text-[10px] font-bold text-slate-500 block">${sz}</span><span class="text-xs font-semibold text-slate-400">0</span></div>`;
+                });
+                return;
+            }
+
+            folderCustomers.forEach(c => {
+                if (c.shirt) {
+                    const sq = parseInt(c.shirtQty) || 1;
+                    if (sCounts[c.shirt] !== undefined) sCounts[c.shirt] += sq; else sCounts['สั่งตัดพิเศษ'] = (sCounts['สั่งตัดพิเศษ'] || 0) + sq;
+                }
+                if (c.pants) {
+                    const pq = parseInt(c.pantsQty) || 1;
+                    if (pCounts[c.pants] !== undefined) pCounts[c.pants] += pq; else pCounts['สั่งตัดพิเศษ'] = (pCounts['สั่งตัดพิเศษ'] || 0) + pq;
+                }
+            });
+
+            ALL_SIZES.forEach(sz => {
+                const cnt = sCounts[sz] || 0, has = cnt > 0;
+                sCont.innerHTML += `<div class="${has ? 'bg-indigo-50/60 border-indigo-100' : 'bg-slate-50 border-slate-100'} p-1.5 rounded-xl text-center border"><span class="text-[10px] font-bold ${has ? 'text-indigo-600' : 'text-slate-400'} block">${sz}</span><span class="text-xs font-bold ${has ? 'text-indigo-900' : 'text-slate-400'}">${cnt}</span></div>`;
+            });
+
+            ALL_SIZES.forEach(sz => {
+                const cnt = pCounts[sz] || 0, has = cnt > 0;
+                pCont.innerHTML += `<div class="${has ? 'bg-purple-50/60 border-purple-100' : 'bg-slate-50 border-slate-100'} p-1.5 rounded-xl text-center border"><span class="text-[10px] font-bold ${has ? 'text-purple-600' : 'text-slate-400'} block">${sz}</span><span class="text-xs font-bold ${has ? 'text-purple-900' : 'text-slate-400'}">${cnt}</span></div>`;
+            });
+
+            let topS = '-', maxS = 0;
+            for (let sz in sCounts) { if (sCounts[sz] > maxS) { maxS = sCounts[sz]; topS = sz; } }
+            let topP = '-', maxP = 0;
+            for (let sz in pCounts) { if (pCounts[sz] > maxP) { maxP = pCounts[sz]; topP = sz; } }
+
+            document.getElementById('statPopularShirt').innerText = maxS > 0 ? `${topS} (${maxS})` : '-';
+            document.getElementById('statPopularPants').innerText = maxP > 0 ? `${topP} (${maxP})` : '-';
+        }
+
+        function openExportModal() {
+            const folderCustomers = customers.filter(item => item.eventName === currentFolder);
+            if (folderCustomers.length === 0) { showToast("ไม่มีข้อมูลให้ส่งออก", "error"); return; }
+            document.getElementById('exportFileName').value = `รายงานไซส์เสื้อผ้า_${currentFolder}_${new Date().toISOString().slice(0, 10)}`;
+            document.getElementById('exportModal').classList.remove('hidden');
+        }
+        function closeExportModal() { document.getElementById('exportModal').classList.add('hidden'); }
+
+        function confirmExportExcel(event) {
+            event.preventDefault();
+            const folderCustomers = customers.filter(item => item.eventName === currentFolder);
+            let fname = document.getElementById('exportFileName').value.trim() || 'รายงานไซส์เสื้อผ้า';
+            if (!fname.endsWith('.xlsx')) fname += '.xlsx';
+
+            logActivity("EXPORT_EXCEL", `ส่งออกรายงาน Excel งาน: ${currentFolder}`);
+
+            let sCounts = {}, pCounts = {};
+            ALL_SIZES.forEach(sz => { sCounts[sz] = 0; pCounts[sz] = 0; });
+            folderCustomers.forEach(c => {
+                if (c.shirt) {
+                    const sq = parseInt(c.shirtQty) || 1;
+                    if (sCounts[c.shirt] !== undefined) sCounts[c.shirt] += sq; else sCounts['สั่งตัดพิเศษ'] += sq;
+                }
+                if (c.pants) {
+                    const pq = parseInt(c.pantsQty) || 1;
+                    if (pCounts[c.pants] !== undefined) pCounts[c.pants] += pq; else pCounts['สั่งตัดพิเศษ'] += pq;
+                }
+            });
+
+            const summary = [
+                { "ประเภทรายการ": "=== สรุปยอดเสื้อ ===", "ไซส์": "", "จำนวนรวม": "" },
+                ...ALL_SIZES.map(sz => ({ "ประเภทรายการ": "เสื้อ", "ไซส์": sz, "จำนวนรวม": sCounts[sz] })),
+                { "ประเภทรายการ": "=== สรุปยอดกางเกง ===", "ไซส์": "", "จำนวนรวม": "" },
+                ...ALL_SIZES.map(sz => ({ "ประเภทรายการ": "กางเกง", "ไซส์": sz, "จำนวนรวม": pCounts[sz] })),
+                { "ประเภทรายการ": "รวมทั้งหมด", "ไซส์": "ลูกค้า", "จำนวนรวม": folderCustomers.length }
+            ];
+
+            const listData = folderCustomers.map((item, idx) => ({
+                "ลำดับ": idx + 1, "ชื่องาน": item.eventName, "ชื่อ-นามสกุล (ไทย)": item.name, "ชื่อ-นามสกุล (อังกฤษ)": item.nameEn || '-', "แผนก/ฝ่าย": item.department || '-', "ชุด": item.outfit, "เสื้อ": item.shirt || '-', "จำนวนเสื้อ": item.shirt ? item.shirtQty : 0, "หมายเหตุเสื้อ": item.shirtNotes || '', "กางเกง": item.pants || '-', "จำนวนกางเกง": item.pants ? item.pantsQty : 0, "หมายเหตุกางเกง": item.pantsNotes || '', "วันที่": formatDate(item.updatedAt || item.createdAt)
+            }));
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), "สรุปยอดไซส์");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(listData), "รายการลูกค้า");
+            XLSX.writeFile(wb, fname);
+            closeExportModal();
+            showToast("ส่งออกไฟล์ Excel สำเร็จ", "success");
+        }
+
+        function openClearAllModal() { 
+            const folderCustomers = customers.filter(item => item.eventName === currentFolder);
+            if (folderCustomers.length === 0) { showToast("ไม่มีข้อมูลในงานนี้", "error"); return; } 
+            document.getElementById('clearAllModal').classList.remove('hidden'); 
+        }
+        function closeClearAllModal() { document.getElementById('clearAllModal').classList.add('hidden'); }
+        function executeClearAllData() {
+            logActivity("CLEAR_ALL_DATA", `ล้างข้อมูลลูกค้าทั้งหมดในงาน: ${currentFolder}`);
+            customers = customers.filter(item => item.eventName !== currentFolder);
+            saveToLocalStorage();
+            resetForm();
+            renderData();
+            closeClearAllModal();
+            showToast("ล้างข้อมูลในงานนี้เรียบร้อย", "success");
+        }
+
+        function loadDemoData() {
+            const now = new Date().toISOString();
+            const demo = [
+                { id: 'CUST-1', eventName: currentFolder, name: 'สมชาย ใจดี', nameEn: 'Somchai Jaidee', department: 'ฝ่ายบุคคล', outfit: 'ชุดยูนิฟอร์ม', shirt: 'L', shirtQty: 2, shirtNotes: 'ยาวเพิ่ม 1 นิ้ว', pants: 'XL', pantsQty: 1, pantsNotes: '', createdAt: now, updatedAt: now },
+                { id: 'CUST-2', eventName: currentFolder, name: 'วิภาดา วงศ์สว่าง', nameEn: 'Wipada Wongsawang', department: 'บัญชี', outfit: 'ชุดยูนิฟอร์ม', shirt: 'M', shirtQty: 1, shirtNotes: '', pants: '', pantsQty: 0, pantsNotes: '', createdAt: now, updatedAt: now }
+            ];
+            customers = [...demo, ...customers];
+            saveToLocalStorage();
+            renderData();
+            logActivity("LOAD_DEMO_DATA", `โหลดข้อมูลตัวอย่างในงาน: ${currentFolder}`);
+            showToast("เพิ่มข้อมูลตัวอย่างสำเร็จ", "success");
+        }
+
+        function openGuideModal() { document.getElementById('guideModal').classList.remove('hidden'); }
+        function closeGuideModal() { document.getElementById('guideModal').classList.add('hidden'); }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            document.getElementById('toastIcon').className = type === "success" ? "fa-solid fa-circle-check text-emerald-400" : "fa-solid fa-triangle-exclamation text-rose-400";
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
